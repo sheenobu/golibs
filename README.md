@@ -16,9 +16,6 @@ extended logging functionality via log15 and golang.org/x/net/context:
 	l := log.Log(ctx)
 	l.Debug("X")
 
-	l := log.Log(cxt).Extend(params)
-	l.Debug("X")
-
 ### apps
 
 Nested application and subprocess management
