@@ -21,17 +21,17 @@ extended logging functionality via log15 and golang.org/x/net/context:
 Nested application and subprocess management
 
 
-            pctx
-            /
-         app
-         /
-pctx  ctx
-  \   / \
-   app  process
-     \
-     ctx
-    /    \
-process  process
+					pctx
+					/
+				 app
+				 /
+		pctx  ctx
+		  \   / \
+		   app  process
+			 \
+			 ctx
+			/    \
+		process  process
 
 
 
