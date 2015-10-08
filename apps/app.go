@@ -49,6 +49,17 @@ func (app *App) Start() {
 
 }
 
+// StartWithContext starts the application
+func (app *App) StartWithContext(ctx context.Context) {
+
+	app.parentContext = ctx
+	app.parentContext, app.parentCancel = context.WithCancel(app.parentContext)
+
+	app.ctx, app.cancelFn = context.WithCancel(app.parentContext)
+
+	log.Log(app.ctx).Debug("Starting application", "app", app.name)
+}
+
 // StartWithParent starts the application with the parent app as the context
 func (app *App) StartWithParent(parent *App) {
 
