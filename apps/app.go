@@ -33,6 +33,11 @@ func NewApp(name string) *App {
 	}
 }
 
+// Context returns the context of the application
+func (app *App) Context() context.Context {
+	return app.ctx
+}
+
 // Start starts the application
 func (app *App) Start() {
 
