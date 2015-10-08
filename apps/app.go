@@ -1,9 +1,8 @@
 package apps
 
 import (
+	"github.com/sheenobu/golibs/log"
 	"golang.org/x/net/context"
-
-	log "gopkg.in/inconshreveable/log15.v2"
 
 	"sync"
 	"time"
@@ -41,19 +40,19 @@ func (app *App) Context() context.Context {
 // Start starts the application
 func (app *App) Start() {
 
-	log.Debug("Starting application", "app", app.name)
-
 	app.parentContext = context.Background()
 	app.parentContext, app.parentCancel = context.WithCancel(app.parentContext)
 
 	app.ctx, app.cancelFn = context.WithCancel(app.parentContext)
+
+	log.Log(app.ctx).Debug("Starting application", "app", app.name)
 
 }
 
 // StartWithParent starts the application with the parent app as the context
 func (app *App) StartWithParent(parent *App) {
 
-	log.Debug("Starting application with parent application", "app", app.name)
+	log.Log(app.ctx).Debug("Starting application with parent application", "app", app.name)
 
 	app.parentContext = context.Background()
 	app.parentContext, app.parentCancel = context.WithCancel(app.parentContext)
@@ -64,7 +63,7 @@ func (app *App) StartWithParent(parent *App) {
 // Stop stops the application
 func (app *App) Stop() {
 
-	log.Debug("Stopping application", "app", app.name)
+	log.Log(app.ctx).Debug("Stopping application", "app", app.name)
 
 	app.cancelFn()
 }
@@ -90,7 +89,7 @@ func (app *App) SpawnApp(child *App) {
 
 // Wait waits for the application and its subprocesses to stop
 func (app *App) Wait() {
-	log.Debug("Waiting on application stop", "app", app.name)
+	log.Log(app.ctx).Debug("Waiting on application stop", "app", app.name)
 
 	procs := make(map[string]bool)
 
@@ -98,11 +97,11 @@ func (app *App) Wait() {
 		for {
 			select {
 			case proc := <-app.startChan:
-				log.Debug("Got suprocess start", "process", proc, "app", app.name)
+				log.Log(app.ctx).Debug("Got subrocess start", "process", proc, "app", app.name)
 				app.wg.Add(1)
 				procs[proc] = true
 			case proc := <-app.stopChan:
-				log.Debug("Got subprocess stop", "process", proc, "app", app.name)
+				log.Log(app.ctx).Debug("Got subprocess stop", "process", proc, "app", app.name)
 				app.wg.Done()
 				procs[proc] = false
 			case <-app.ctx.Done():
@@ -117,7 +116,7 @@ func (app *App) Wait() {
 		for {
 			select {
 			case proc := <-app.stopChan:
-				log.Debug("Got subprocess stop", "process", proc, "app", app.name)
+				log.Log(app.ctx).Debug("Got subprocess stop", "process", proc, "app", app.name)
 				procs[proc] = false
 				app.wg.Done()
 			case <-app.parentContext.Done():
@@ -128,7 +127,7 @@ func (app *App) Wait() {
 
 	ch := make(chan struct{})
 
-	log.Debug("Application stopped, waiting on subprocesses", "app", app.name)
+	log.Log(app.ctx).Debug("Application stopped, waiting on subprocesses", "app", app.name)
 	go func() {
 		app.wg.Wait()
 		close(ch)
@@ -136,12 +135,12 @@ func (app *App) Wait() {
 
 	select {
 	case <-ch:
-		log.Debug("All subprocesses stopped", "app", app.name)
+		log.Log(app.ctx).Debug("All subprocesses stopped", "app", app.name)
 	case <-time.After(1 * time.Second):
-		log.Error("Some subprocesses failed to stop in time", "app", app.name)
+		log.Log(app.ctx).Error("Some subprocesses failed to stop in time", "app", app.name)
 		for k, v := range procs {
 			if v == true {
-				log.Error("Subprocess failed to stop in time", "proc", k, "app", app.name)
+				log.Log(app.ctx).Error("Subprocess failed to stop in time", "proc", k, "app", app.name)
 			}
 		}
 	}
