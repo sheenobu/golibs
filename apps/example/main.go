@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
+	"time"
 
 	"github.com/sheenobu/golibs/apps"
 	"golang.org/x/net/context"
@@ -35,14 +37,21 @@ func main() {
 	}
 
 	go func() {
+		<-time.After(1 * time.Millisecond)
+		app.WriteTree(apps.TextWriter(os.Stdout, 1))
+	}()
+
+	go func() {
 		sender <- 1
 		sender <- 2
 		sender <- 3
 		sender <- 4
 		sender <- 5
 	}()
+
 	app.Wait()
 
+	<-time.After(3 * time.Millisecond)
 }
 
 func mySubprocessFactory(name string, recv <-chan int, resp chan<- int) func(ctx context.Context) {

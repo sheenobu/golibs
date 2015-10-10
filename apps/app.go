@@ -21,6 +21,12 @@ type App struct {
 
 	startChan chan string
 	stopChan  chan string
+
+	lock          sync.RWMutex
+	Children      []*App
+	ChildrenProcs []string
+
+	procs map[string]bool
 }
 
 // NewApp creates a new application
@@ -46,7 +52,6 @@ func (app *App) Start() {
 	app.ctx, app.cancelFn = context.WithCancel(app.parentContext)
 
 	log.Log(app.ctx).Debug("Starting application", "app", app.name)
-
 }
 
 // StartWithContext starts the application
@@ -83,6 +88,9 @@ func (app *App) Stop() {
 func (app *App) SpawnSimple(name string, f func(ctx context.Context)) {
 	go func() {
 		app.startChan <- name
+		app.lock.Lock()
+		app.ChildrenProcs = append(app.ChildrenProcs, name)
+		app.lock.Unlock()
 		f(app.ctx)
 		app.stopChan <- name
 	}()
@@ -92,6 +100,9 @@ func (app *App) SpawnSimple(name string, f func(ctx context.Context)) {
 func (app *App) SpawnApp(child *App) {
 	go func() {
 		app.startChan <- "app:" + child.name
+		app.lock.Lock()
+		app.Children = append(app.Children, child)
+		app.lock.Unlock()
 		child.StartWithParent(app)
 		child.Wait()
 		app.stopChan <- "app:" + child.name
@@ -105,6 +116,8 @@ func (app *App) Wait() {
 	procs := make(map[string]bool)
 
 	go func() {
+
+	L:
 		for {
 			select {
 			case proc := <-app.startChan:
@@ -116,14 +129,10 @@ func (app *App) Wait() {
 				app.wg.Done()
 				procs[proc] = false
 			case <-app.ctx.Done():
-				return
+				break L
 			}
 		}
-	}()
 
-	<-app.ctx.Done()
-
-	go func() {
 		for {
 			select {
 			case proc := <-app.stopChan:
@@ -135,6 +144,8 @@ func (app *App) Wait() {
 			}
 		}
 	}()
+
+	<-app.ctx.Done()
 
 	ch := make(chan struct{})
 
