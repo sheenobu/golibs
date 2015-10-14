@@ -33,7 +33,37 @@ Nested application and subprocess management
 			/    \
 		process  process
 
+Usage:
 
+	import (
+		"github.com/sheenobu/golibs/apps"
+		"golang.org/x/net/context"
+
+		"time"
+		"os"
+		"fmt"
+	)
+
+	func main() {
+		app := aps.NewApp("MyApp")
+		app.Start()
+
+		app.RegisterForStop(os.Interrupt)
+		
+		app.SpawnSimple("MyTimer", func(ctx context.Context) {
+			for {
+				select {
+				case <-time.After(3 * time.Second):
+					fmt.Printf("Running process\n")
+				case <-ctx.Done():
+					fmt.Printf("Got quit\n")
+					return // Leave function
+				}
+			}
+		})
+
+		app.Wait() // wait for app.Stop to get called (via RegisterForStop)
+	}
 
 ### dispatch
 
