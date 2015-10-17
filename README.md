@@ -16,6 +16,52 @@ extended logging functionality via log15 and golang.org/x/net/context:
 	l := log.Log(ctx)
 	l.Debug("X")
 
+### managed
+
+AKA apps 2.0
+
+managed system and component hierarchies:
+
+	import (
+		"github.com/sheenobu/golibs/managed"
+		"golang.org/x/net/context"
+
+		"time"
+		"os"
+		"fmt"
+	)
+
+	func main() {
+		system := managed.NewSystem("MySystem")
+		system.Start()
+
+		system.RegisterForStop(os.Interrupt)
+
+		myChannel := make(chan string)
+
+		myTimer := managed.Timer("MyTimer", 3 * time.Second, false /*runImmediately*/, func(ctx context.Context) {
+			fmt.Printf("Running process\n")
+			myChannel <- "hello"
+		})
+
+		myChannelListener := managed.Simple("MyChannelListener, func(ctx context.Context) {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case data := <-ch:
+					fmt.Printf("got signal: %s!\n", data)
+				}
+			}
+		})
+
+		system.Add(myTimer)
+		system.Add(myChannelListener)
+
+		system.Wait()
+	}
+
+
 ### apps
 
 Nested application and subprocess management
