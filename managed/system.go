@@ -115,37 +115,9 @@ func (sys *System) Wait() {
 
 	procs := make(map[string]bool)
 
-	go func() {
-
-	L:
-		for {
-			select {
-			case proc := <-sys.startChan:
-				log.Log(sys.ctx).Debug("Got subrocess start", "process", proc, "app", sys.name)
-				sys.wg.Add(1)
-				procs[proc] = true
-			case proc := <-sys.stopChan:
-				log.Log(sys.ctx).Debug("Got subprocess stop", "process", proc, "app", sys.name)
-				sys.wg.Done()
-				procs[proc] = false
-			case <-sys.ctx.Done():
-				break L
-			}
-		}
-
-		for {
-			select {
-			case proc := <-sys.stopChan:
-				log.Log(sys.ctx).Debug("Got subprocess stop", "process", proc, "app", sys.name)
-				procs[proc] = false
-				sys.wg.Done()
-			case <-sys.parentContext.Done():
-				return
-			}
-		}
-	}()
-
-	<-sys.ctx.Done()
+	sys.watchProcessState(func(name string, status bool) {
+		procs[name] = status
+	})
 
 	ch := make(chan struct{})
 
@@ -161,12 +133,45 @@ func (sys *System) Wait() {
 	case <-time.After(1 * time.Second):
 		log.Log(sys.ctx).Error("Some subprocesses failed to stop in time", "app", sys.name)
 		for k, v := range procs {
-			if v == true {
+			if v {
 				log.Log(sys.ctx).Error("Subprocess failed to stop in time", "proc", k, "app", sys.name)
 			}
 		}
 	}
 
 	sys.parentCancel()
+}
 
+func (sys *System) watchProcessState(setProcStatus func(name string, status bool)) {
+	go func() {
+
+	L:
+		for {
+			select {
+			case proc := <-sys.startChan:
+				log.Log(sys.ctx).Debug("Got subrocess start", "process", proc, "app", sys.name)
+				sys.wg.Add(1)
+				setProcStatus(proc, true)
+			case proc := <-sys.stopChan:
+				log.Log(sys.ctx).Debug("Got subprocess stop", "process", proc, "app", sys.name)
+				sys.wg.Done()
+				setProcStatus(proc, false)
+			case <-sys.ctx.Done():
+				break L
+			}
+		}
+
+		for {
+			select {
+			case proc := <-sys.stopChan:
+				log.Log(sys.ctx).Debug("Got subprocess stop", "process", proc, "app", sys.name)
+				setProcStatus(proc, false)
+				sys.wg.Done()
+			case <-sys.parentContext.Done():
+				return
+			}
+		}
+	}()
+
+	<-sys.ctx.Done()
 }
