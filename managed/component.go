@@ -5,8 +5,9 @@ import (
 	"io"
 	"strconv"
 
-	"golang.org/x/net/context"
 	"time"
+
+	"golang.org/x/net/context"
 )
 
 // A Component is our fundamental building block
@@ -22,11 +23,12 @@ func Simple(name string, c Component) *Process {
 			"Name":   name,
 			"Status": "stopped",
 		},
-		Writer: func(process *Process, w io.Writer) {
+		Writer: func(process *Process, w io.Writer) error {
 			t, _ := process.Get("Type")
 			n, _ := process.Get("Name")
 			s, _ := process.Get("Status")
-			w.Write([]byte(fmt.Sprintf("%s: %s [%s]\n", t, n, s)))
+			_, err := w.Write([]byte(fmt.Sprintf("%s: %s [%s]\n", t, n, s)))
+			return err
 		},
 	}
 }
@@ -42,7 +44,7 @@ func Timer(name string, interval time.Duration, runImmediately bool, f func(cont
 			"Status":   "stopped",
 			"Interval": interval.String(),
 		},
-		Writer: func(process *Process, w io.Writer) {
+		Writer: func(process *Process, w io.Writer) error {
 			t, _ := process.Get("Type")
 			n, _ := process.Get("Name")
 			i, _ := process.Get("Interval")
@@ -50,7 +52,8 @@ func Timer(name string, interval time.Duration, runImmediately bool, f func(cont
 			s, _ := process.Get("Status")
 			r, _ := process.Get("Runcount")
 
-			w.Write([]byte(fmt.Sprintf("%s: %s runcount=%s interval=%s lastrun=%s [%s]\n", t, n, r, i, l, s)))
+			_, err := w.Write([]byte(fmt.Sprintf("%s: %s runcount=%s interval=%s lastrun=%s [%s]\n", t, n, r, i, l, s)))
+			return err
 		},
 	}
 

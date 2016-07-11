@@ -8,10 +8,10 @@ import (
 type Writer interface {
 
 	// WriteProcess writes the process
-	WriteProcess(sys *System, process *Process)
+	WriteProcess(sys *System, process *Process) error
 
 	// WriteSystem writes the system
-	WriteSystem(sys *System)
+	WriteSystem(sys *System) error
 
 	// Child gets the child writer
 	Child() Writer
@@ -40,36 +40,49 @@ func (wr *IoWriter) Child() Writer {
 }
 
 // WriteProcess writes the process information
-func (wr *IoWriter) WriteProcess(sys *System, process *Process) {
+func (wr *IoWriter) WriteProcess(sys *System, process *Process) error {
 	for i := 0; i != wr.tabs+1; i++ {
-		wr.wr.Write([]byte("\t"))
+		if _, err := wr.wr.Write([]byte("\t")); err != nil {
+			return err
+		}
 	}
 
-	process.Writer(process, wr.wr)
+	return process.Writer(process, wr.wr)
 }
 
 // WriteSystem writes the system information
-func (wr *IoWriter) WriteSystem(sys *System) {
+func (wr *IoWriter) WriteSystem(sys *System) error {
 	for i := 0; i != wr.tabs; i++ {
-		wr.wr.Write([]byte("\t"))
+		if _, err := wr.wr.Write([]byte("\t")); err != nil {
+			return err
+		}
 	}
 
-	wr.wr.Write([]byte("System: " + sys.name + "-\n"))
+	_, err := wr.wr.Write([]byte("System: " + sys.name + "-\n"))
+	return err
 }
 
 // WriteTree recursively writes the system(s) and processes to the given writer.
-func (sys *System) WriteTree(w Writer) {
-	w.WriteSystem(sys)
+func (sys *System) WriteTree(w Writer) error {
+	if err := w.WriteSystem(sys); err != nil {
+		return err
+	}
 
 	sys.lock.RLock()
+	defer sys.lock.RUnlock()
+
 	for _, ch := range sys.ChildrenProcs {
-		w.WriteProcess(sys, ch)
+		if err := w.WriteProcess(sys, ch); err != nil {
+			return err
+		}
 	}
 
 	child := w.Child()
 	for _, ch := range sys.Children {
-		ch.WriteTree(child)
+		if err := ch.WriteTree(child); err != nil {
+			return err
+		}
 	}
-	sys.lock.RUnlock()
 
+	return nil
 }

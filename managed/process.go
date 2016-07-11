@@ -11,7 +11,7 @@ type Process struct {
 	Name      string
 	Component Component
 
-	Writer func(*Process, io.Writer)
+	Writer func(*Process, io.Writer) error
 
 	data map[string]string
 
