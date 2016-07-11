@@ -3,6 +3,7 @@ package managed
 import (
 	"fmt"
 	"io"
+	"os"
 	"sync"
 )
 
@@ -18,9 +19,10 @@ type Process struct {
 	lock sync.RWMutex
 }
 
+// SetMany sets the key/value pairs on the data
 func (p *Process) SetMany(a ...string) {
 	if len(a)&2 != 0 {
-		fmt.Errorf("SetMany arguments is not even, dropping last")
+		fmt.Fprintf(os.Stderr, "SetMany arguments is not even, dropping last")
 		a = a[0 : len(a)-1]
 	}
 
@@ -34,12 +36,16 @@ func (p *Process) SetMany(a ...string) {
 
 }
 
-func (p *Process) Set(key, val string) {
+// Set sets or overwrites the key value pair to the process data
+func (p *Process) Set(key, val string) bool {
 	p.lock.Lock()
 	defer p.lock.Unlock()
-	p.data[key] = val
+	_, ok := p.data[key]
+	p.data[key] = key
+	return ok
 }
 
+// Get gets the value for the key in the process data, if available
 func (p *Process) Get(key string) (string, bool) {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
